@@ -18,6 +18,7 @@ st.markdown("""
     .pill-gray { background-color: #94A3B8; color: white; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; margin: 4px; opacity: 0.85; text-decoration: line-through;}
     .pill-indigo { background-color: #6366F1; color: white; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; margin: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: 0.5px;}
     .pill-red { background-color: #EF4444; color: white; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; margin: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);}
+    .pill-orange { background-color: #F59E0B; color: white; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; margin: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);}
     
     /* Summary Box */
     .summary-box { background-color: white; border-radius: 10px; padding: 25px; margin-bottom: 25px; border-left: 8px solid #D32F2F; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-top: 1px solid #E5E7EB; border-right: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB;}
@@ -47,17 +48,28 @@ LICENSES = ['ACAT', 'StealthBit', 'IGA', 'CyberArk', 'Centrify', 'ServiceNow']
 if 'entities' not in st.session_state: st.session_state.entities = ['MUBK', 'MUSA', 'BRAZIL', 'MEXICO', 'INTREPID', 'BRAZIL (SOW1)']
 if 'current_customize_entity' not in st.session_state: st.session_state.current_customize_entity = 'MUBK'
 
-TCO_CATEGORIES = ['Asset Cost (HY)', 'Resource Cost - FTE', 'Managed Services - TCS PS']
+CORE_TCO = ['Asset Cost (HY)', 'Resource Cost - FTE', 'Managed Services - TCS PS']
+DYNAMIC_TCO = []
+if 'tco_df' in st.session_state:
+    all_cats = st.session_state.tco_df['Category'].tolist()
+    DYNAMIC_TCO = [c for c in all_cats if c not in CORE_TCO]
+
+ALL_TCO_CATEGORIES = CORE_TCO + DYNAMIC_TCO
 
 if 'customizations' not in st.session_state:
     st.session_state.customizations = {}
     for ent in st.session_state.entities:
         st.session_state.customizations[ent] = {
-            'tco': {cat: {gsi: True for gsi in GSIs} for cat in TCO_CATEGORIES},
+            'tco': {cat: {gsi: True for gsi in GSIs} for cat in ALL_TCO_CATEGORIES},
             'license': {lic: True for lic in LICENSES},
             'use_uplift': False,
             'uplift_val': 40.0
         }
+
+for ent in st.session_state.entities:
+    for cat in ALL_TCO_CATEGORIES:
+        if cat not in st.session_state.customizations[ent]['tco']:
+            st.session_state.customizations[ent]['tco'][cat] = {gsi: True for gsi in GSIs}
 
 # --- 4. TOP CONTROL BAR ---
 st.markdown('<div class="input-card" style="padding: 15px 25px;">', unsafe_allow_html=True)
@@ -79,7 +91,6 @@ tab_tco, tab_lic, tab_summary = st.tabs(["📊 TCO Component Filter", "🔑 Lice
 with tab_tco:
     st.markdown('<div class="input-card">', unsafe_allow_html=True)
     
-    # --- NEW: ASSET UPLIFT SECTION ---
     st.markdown("<h4 style='color: #D32F2F;'>Formula Customization</h4>", unsafe_allow_html=True)
     up_col1, up_col2 = st.columns([1, 2])
     with up_col1:
@@ -99,15 +110,36 @@ with tab_tco:
     
     st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
     
-    # Standard GSI Filters
-    st.markdown(f"<h3 style='color: #1E293B; margin-top: 0;'>Include/Exclude TCO Components</h3>", unsafe_allow_html=True)
-    for cat in TCO_CATEGORIES:
-        st.markdown(f"<h4 style='color: #334155; font-size: 15px; margin-bottom: 10px;'>{cat}</h4>", unsafe_allow_html=True)
+    # --- ADDED: SELECT ALL / CLEAR ALL FOR TCO ---
+    st.markdown("<div style='display: flex; justify-content: space-between; align-items: center;'>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #1E293B; margin: 0;'>Include/Exclude TCO Components</h3>", unsafe_allow_html=True)
+    
+    t_btn1, t_btn2, t_sp = st.columns([1.2, 1.2, 5])
+    with t_btn1:
+        if st.button("✅ Select All TCO", use_container_width=True, key="sel_all_tco"):
+            for cat in ALL_TCO_CATEGORIES:
+                for gsi in GSIs:
+                    st.session_state.customizations[selected_entity]['tco'][cat][gsi] = True
+            st.rerun()
+    with t_btn2:
+        if st.button("❌ Clear All TCO", use_container_width=True, key="clr_all_tco"):
+            for cat in ALL_TCO_CATEGORIES:
+                for gsi in GSIs:
+                    st.session_state.customizations[selected_entity]['tco'][cat][gsi] = False
+            st.rerun()
+    st.markdown("</div><br>", unsafe_allow_html=True)
+    
+    for cat in ALL_TCO_CATEGORIES:
+        color = "#334155" if cat in CORE_TCO else "#F59E0B"
+        st.markdown(f"<h4 style='color: {color}; font-size: 15px; margin-bottom: 10px;'>{cat}</h4>", unsafe_allow_html=True)
         cols = st.columns(10)
         for i, gsi in enumerate(GSIs):
             with cols[i]:
+                if cat not in st.session_state.customizations[selected_entity]['tco']:
+                     st.session_state.customizations[selected_entity]['tco'][cat] = {g: True for g in GSIs}
+                
                 st.session_state.customizations[selected_entity]['tco'][cat][gsi] = st.checkbox(
-                    gsi, value=st.session_state.customizations[selected_entity]['tco'][cat][gsi], 
+                    gsi, value=st.session_state.customizations[selected_entity]['tco'][cat].get(gsi, True), 
                     key=f"tco_{selected_entity}_{cat}_{gsi}"
                 )
     st.markdown('</div>', unsafe_allow_html=True)
@@ -117,7 +149,23 @@ with tab_tco:
 # ==========================================
 with tab_lic:
     st.markdown('<div class="input-card">', unsafe_allow_html=True)
-    st.markdown(f"<h3 style='color: #1E293B;'>Include/Exclude Licenses</h3>", unsafe_allow_html=True)
+    
+    # --- ADDED: SELECT ALL / CLEAR ALL FOR LICENSES ---
+    l_head, l_btn1, l_btn2, l_sp = st.columns([3, 1, 1, 3])
+    with l_head:
+        st.markdown(f"<h3 style='color: #1E293B; margin:0;'>Include/Exclude Licenses</h3>", unsafe_allow_html=True)
+    with l_btn1:
+        if st.button("✅ Select All", use_container_width=True, key="sel_all_lic"):
+            for lic in LICENSES:
+                st.session_state.customizations[selected_entity]['license'][lic] = True
+            st.rerun()
+    with l_btn2:
+        if st.button("❌ Clear All", use_container_width=True, key="clr_all_lic"):
+            for lic in LICENSES:
+                st.session_state.customizations[selected_entity]['license'][lic] = False
+            st.rerun()
+            
+    st.write("")
     cols = st.columns(6)
     for i, lic in enumerate(LICENSES):
         with cols[i]:
@@ -138,23 +186,25 @@ with tab_summary:
         considered_html = ""
         excluded_html = ""
         
-        # Add Uplift Status to Summary
         if ent_data['use_uplift']:
             considered_html += f'<div><span class="cat-label">Asset Formula:</span><span class="pill-red">Uplift Active ({ent_data["uplift_val"]}%)</span></div>'
 
-        for cat in TCO_CATEGORIES:
+        for cat in ALL_TCO_CATEGORIES:
             inc_pills, exc_pills = "", ""
-            for gsi in GSIs:
-                if ent_data['tco'][cat].get(gsi, True): inc_pills += f'<span class="pill-green">{gsi}</span>'
-                else: exc_pills += f'<span class="pill-gray">{gsi}</span>'
-            if inc_pills: considered_html += f'<div><span class="cat-label">{cat}:</span>{inc_pills}</div>'
-            if exc_pills: excluded_html += f'<div><span class="cat-label">{cat}:</span>{exc_pills}</div>'
+            if cat in ent_data['tco']:
+                for gsi in GSIs:
+                    if ent_data['tco'][cat].get(gsi, True): inc_pills += f'<span class="pill-green">{gsi}</span>'
+                    else: exc_pills += f'<span class="pill-gray">{gsi}</span>'
+                
+                if inc_pills: considered_html += f'<div><span class="cat-label">{cat}:</span>{inc_pills}</div>'
+                if exc_pills: excluded_html += f'<div><span class="cat-label">{cat}:</span>{exc_pills}</div>'
             
         inc_lic, exc_lic = "", ""
         for lic in LICENSES:
             if ent_data['license'].get(lic, True): inc_lic += f'<span class="pill-indigo">{lic}</span>'
             else: exc_lic += f'<span class="pill-gray">{lic}</span>'
         if inc_lic: considered_html += f'<div style="margin-top: 12px; border-top: 1px dashed #eee; padding-top: 8px;"><span class="cat-label">Licenses Chosen:</span>{inc_lic}</div>'
+        if exc_lic: excluded_html += f'<div style="margin-top: 12px; border-top: 1px dashed #eee; padding-top: 8px;"><span class="cat-label">Licenses Excluded:</span>{exc_lic}</div>'
 
         final_card_html = f"""
 <div class="summary-box">

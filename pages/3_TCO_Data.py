@@ -103,8 +103,9 @@ for gsi in GSIs:
 display_df = st.session_state.tco_df.copy()
 display_df['Grand Total'] = display_df[GSIs].sum(axis=1)
 
+# MODIFIED: disabled=False for Category to allow custom text entry
 column_config = {
-    "Category": st.column_config.TextColumn("Category", disabled=True),
+    "Category": st.column_config.TextColumn("Category", disabled=False),
     "Grand Total": st.column_config.NumberColumn("Grand Total", format="$%d", disabled=True) 
 }
 for gsi in GSIs: column_config[gsi] = st.column_config.NumberColumn(gsi, format="$%d")
@@ -133,7 +134,8 @@ bc1, bc2, bc3, bc4 = st.columns([1.5, 1.5, 3, 2])
 
 with bc1:
     if st.button("➕ Add Custom Expense", use_container_width=True):
-        new_row = {'Category': f'Custom Expense {len(st.session_state.tco_df)-2}'}
+        # MODIFIED: Placeholder text to prompt user to enter reason
+        new_row = {'Category': f'Type reason here...'}
         for gsi in GSIs: new_row[gsi] = 0.0
         st.session_state.tco_df = pd.concat([st.session_state.tco_df, pd.DataFrame([new_row])], ignore_index=True)
         st.rerun()
@@ -167,6 +169,7 @@ if st.session_state.tco_uploaded_data is not None:
     
     st.dataframe(st.session_state.tco_uploaded_data, hide_index=True, use_container_width=True)
     
+    # MODIFIED: sum() now dynamically totals all rows including newly named custom ones
     final_grand_total = st.session_state.tco_uploaded_data['Grand Total'].sum()
     st.markdown(f"<h3 style='text-align:right; color:#D32F2F; margin-top:10px;'>Total Overall TCO Cost: ${final_grand_total:,.2f}</h3>", unsafe_allow_html=True)
     

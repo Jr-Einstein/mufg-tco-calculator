@@ -45,7 +45,8 @@ def calculate_entity_metrics(ent):
     tco_filters = cust.get('tco', {})
     lic_filters = cust.get('license', {})
 
-    df = st.session_state.tco_df_dict.get(ent, pd.DataFrame())
+    # MODIFIED: Get live TCO data (if available in current workspace)
+    df = st.session_state.get('tco_df', st.session_state.tco_df_dict.get(ent, pd.DataFrame()))
 
     # 2. IAM OP COST
     cost_gsi = apps * r_gsi * cph
@@ -55,15 +56,19 @@ def calculate_entity_metrics(ent):
     subtotal_iam = cost_gsi + cost_unix + cost_win + cost_ad
     total_iam_ops = subtotal_iam * (1 + (cert_audit_pct / 100))
 
-    # 3. FILTERED TCO
+    # 3. FILTERED TCO (MODIFIED TO SUPPORT DYNAMIC CUSTOM REASONS)
     total_tco = 0.0
     if not df.empty:
         for idx, row in df.iterrows():
             cat = row['Category']
+            # Get specific filters for THIS category (Core or Custom Reason)
             cat_filters = tco_filters.get(cat, {}) if tco_filters else {}
+            
             for gsi in GSIs:
+                # CHECK: Only add value if this GSI is checked for this Reason/Category
                 if cat_filters.get(gsi, True):
                     cell_val = float(row[gsi])
+                    # Uplift remains specific to Asset row
                     if cat == 'Asset Cost (HY)' and use_uplift:
                         cell_val += (uplift_val / 100.0) * fte_cost
                     total_tco += cell_val
@@ -97,15 +102,12 @@ def calculate_entity_metrics(ent):
         "tot_by_app_lic": total_cost_by_app_lic, "tot_std_lic": total_cost_std_user_lic, 
         "tot_priv_lic": total_cost_priv_user_lic, "grand_total": grand_total,
         
-        # Raw Data needed for Global Aggregation
         "raw_apps": apps, "raw_users": users, "raw_priv_users": priv_users, "raw_std_users": std_users,
         "raw_c_centrify": c_centrify, "raw_std_lic_sum": std_lic_sum
     }
 
 def calculate_global_metrics(all_results, entity_list):
     """Calculates the combined weighted average for the 'All Entities' view."""
-    
-    # CRASH-PROOF FIX: Only loop through valid dictionaries belonging to our entities
     valid_res = []
     mubk_tco = 0.0
     for ent in entity_list:
@@ -115,31 +117,25 @@ def calculate_global_metrics(all_results, entity_list):
                 mubk_tco = all_results[ent].get('filtered_tco_total', 0.0)
             
     if not valid_res:
-        return {} # Failsafe if empty
+        return {} 
 
     sum_apps = sum(res.get('raw_apps', 0) for res in valid_res)
     sum_iam = sum(res.get('iam_ops_total', 0.0) for res in valid_res)
     sum_users = sum(res.get('raw_users', 0) for res in valid_res)
     sum_priv = sum(res.get('raw_priv_users', 0) for res in valid_res)
 
-    # Weighted Licenses (Excel Logic)
     sum_with_lic_all = sum(res.get('grand_total', 0.0) for res in valid_res)
     
-    # 1. Global By App (MODIFIED: MUBK TCO / Global Apps)
     global_by_app = (mubk_tco / sum_apps) if sum_apps > 0 else 0.0
     
-    # 2. Global By App + License (MODIFIED)
     sum_centrify_weighted = sum(res.get('raw_c_centrify', 0.0) * res.get('raw_apps', 0) for res in valid_res)
     global_by_app_lic = global_by_app + ((sum_centrify_weighted / sum_apps) if sum_apps > 0 else 0.0)
 
-    # 3. Global Standard User
     global_by_std = (sum_iam / sum_users) if sum_users > 0 else 0.0
     
-    # 4. Global Standard User + License
     sum_std_lic_weighted = sum(res.get('raw_std_lic_sum', 0.0) * res.get('raw_users', 0) for res in valid_res)
     global_by_std_lic = global_by_std + ((sum_std_lic_weighted / sum_users) if sum_users > 0 else 0.0)
 
-    # 5. Global Privileged User + License
     sum_priv_weighted_cost = sum(res.get('unit_by_priv_lic', 0.0) * res.get('raw_priv_users', 0) for res in valid_res)
     global_by_priv_lic = (sum_priv_weighted_cost / sum_priv) if sum_priv > 0 else 0.0
 
@@ -166,5 +162,4 @@ def update_all_results():
     for ent in entities:
         st.session_state.calculated_results[ent] = calculate_entity_metrics(ent)
         
-    # Generate the combined "All Entities" view Safely
     st.session_state.calculated_results['ALL_ENTITIES_COMBINED'] = calculate_global_metrics(st.session_state.calculated_results, entities)

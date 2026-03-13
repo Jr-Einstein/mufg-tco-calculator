@@ -2,7 +2,92 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+from fpdf import FPDF # <-- NEW: For PDF Generation
 from engine import update_all_results # <-- Importing our Brain
+
+# --- PDF GENERATOR FOR SUMMARY ---
+def generate_summary_pdf(entities, summary_df, global_res):
+    pdf = FPDF(orientation='L', unit='mm', format='A4') # Landscape for wide tables
+    pdf.add_page()
+    
+    # 1. Header (MUFG Style)
+    if os.path.exists("logo.png"):
+        pdf.image("logo.png", 10, 8, 33)
+    
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "IAM TCO GLOBAL EXECUTIVE SUMMARY", 0, 1, 'C')
+    
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_text_color(100, 100, 100)
+    # Added Entity list in header
+    entity_str = ", ".join(entities)
+    pdf.cell(0, 10, f"Considering Entities: {entity_str}", 0, 1, 'C')
+    
+    pdf.set_font("Arial", '', 9)
+    pdf.cell(0, 5, f"Report Date: {datetime.now().strftime('%b %d, %Y | %H:%M:%S')}", 0, 1, 'R')
+    
+    pdf.set_draw_color(211, 47, 47)
+    pdf.line(10, 38, 287, 38)
+    pdf.ln(10)
+
+    # 2. Entity Input Matrix Table
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_fill_color(227, 74, 74) # Red Header
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 10, " GLOBAL ENTITY INPUT MATRIX", 0, 1, 'L', fill=True)
+    pdf.ln(2)
+
+    pdf.set_font("Arial", 'B', 8)
+    pdf.set_text_color(0, 0, 0)
+    
+    # Calculate column widths dynamically
+    base_col_width = 50
+    entity_col_width = (277 - base_col_width) / len(entities)
+    
+    # Table Header Row
+    pdf.cell(base_col_width, 8, "Category", 1, 0, 'C', fill=False)
+    for ent in entities:
+        pdf.cell(entity_col_width, 8, ent, 1, 0, 'C')
+    pdf.ln()
+
+    # Table Data Rows
+    pdf.set_font("Arial", '', 8)
+    for i, row in summary_df.iterrows():
+        pdf.cell(base_col_width, 7, str(row['Category']), 1)
+        for ent in entities:
+            pdf.cell(entity_col_width, 7, f"{row[ent]:,}", 1, 0, 'C')
+        pdf.ln()
+
+    pdf.ln(10)
+
+    # 3. Global Average Costs
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 10, " BLENDED ALL-ENTITY AVERAGES", 0, 1, 'L', fill=True)
+    pdf.ln(2)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", '', 10)
+    results_map = [
+        ["Global Metric", "Blended Average (USD)"],
+        ["By App", f"${global_res.get('unit_by_app', 0):,.2f}"],
+        ["By App + License", f"${global_res.get('unit_by_app_lic', 0):,.2f}"],
+        ["By Standard User", f"${global_res.get('unit_by_std', 0):,.2f}"],
+        ["By Standard User + License", f"${global_res.get('unit_by_std_lic', 0):,.2f}"],
+        ["By Privileged User + License", f"${global_res.get('unit_by_priv_lic', 0):,.2f}"]
+    ]
+
+    for row in results_map:
+        pdf.cell(100, 8, row[0], 1)
+        pdf.cell(60, 8, row[1], 1, 1, 'R')
+
+    # Footer
+    pdf.set_y(-15)
+    pdf.set_font('Arial', 'I', 8)
+    pdf.set_text_color(128)
+    pdf.cell(0, 10, f'Page {pdf.page_no()}', 0, 0, 'C')
+    
+    return bytes(pdf.output())
 
 # --- INITIALIZATION CHECK ---
 if 'entities' not in st.session_state:
@@ -76,7 +161,7 @@ st.markdown("""
         border-radius: 8px; 
         text-align: center; 
         border-bottom: 4px solid #E34A4A; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
         margin-bottom: 20px;
     }
     .metric-label { font-size: 12px; color: #666; font-weight: bold; text-transform: uppercase; }
@@ -99,7 +184,7 @@ with col_time:
 st.markdown("<hr style='margin: 10px 0 10px 0; border: 0; height: 1px; background: #BBB;'>", unsafe_allow_html=True)
 
 # --- 4. ACTION BAR ---
-col_ref, _ = st.columns([1, 4])
+col_ref, col_dl, col_sp = st.columns([1.2, 1.2, 3.6])
 with col_ref:
     if st.button("🔄 Refresh Summary", use_container_width=True):
         st.rerun()
@@ -129,6 +214,23 @@ for ent in st.session_state.entities:
 
 df_summary = pd.DataFrame(summary_table)
 
+# Download Button Logic (Added to Action Bar)
+global_res = st.session_state.calculated_results.get('ALL_ENTITIES_COMBINED', {})
+with col_dl:
+    if global_res:
+        summary_pdf = generate_summary_pdf(st.session_state.entities, df_summary, global_res)
+        st.download_button(
+            label="📥 Download Report",
+            data=summary_pdf,
+            file_name=f"Global_IAM_TCO_Summary_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+# Added "Considering Entities" string after header
+entity_list_header = ", ".join(st.session_state.entities)
+st.markdown(f"<p style='text-align:center; color:#555; font-weight:700;'>Considering Entities: {entity_list_header}</p>", unsafe_allow_html=True)
+
 # --- 6. KPI METRICS ---
 m1, m2, m3 = st.columns(3)
 with m1:
@@ -146,15 +248,11 @@ with left_col:
     st.dataframe(df_summary, use_container_width=True, hide_index=True)
 
 with right_col:
-    # 🧠 FETCH THE GLOBAL AVERAGES FROM THE ENGINE
-    global_res = st.session_state.calculated_results.get('ALL_ENTITIES_COMBINED', {})
-    
     st.markdown('<div class="result-card">', unsafe_allow_html=True)
     st.markdown('<div class="result-header">GLOBAL AVERAGE COST</div>', unsafe_allow_html=True)
     
     st.markdown("<p style='text-align:center; font-weight:800; color:#E34A4A; font-size:14px; margin-bottom:10px;'>Blended All-Entity Averages</p>", unsafe_allow_html=True)
     
-    # Mapping the engine's global results to your UI labels
     results = [
         ("By App", global_res.get("unit_by_app", 0.00)),
         ("By App + License", global_res.get("unit_by_app_lic", 0.00)),
