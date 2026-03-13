@@ -2,10 +2,24 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import json # <-- Added for storage
 from engine import update_all_results # <-- IMPORTING THE ENGINE
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(page_title="IAM TCO Analytics", layout="wide", initial_sidebar_state="collapsed")
+
+# --- PERSISTENCE HELPERS ---
+STORAGE_FILE = "data_storage.json"
+
+def save_persistent_data(data):
+    with open(STORAGE_FILE, "w") as f:
+        json.dump(data, f)
+
+def load_persistent_data():
+    if os.path.exists(STORAGE_FILE):
+        with open(STORAGE_FILE, "r") as f:
+            return json.load(f)
+    return None
 
 # --- FEATURE 1 HELPER: GLOBAL VIEWER COUNT ---
 @st.cache_resource
@@ -28,9 +42,13 @@ if 'current_entity' not in st.session_state:
 if 'has_notified' not in st.session_state:
     st.session_state.has_notified = False
 
-# Initialize Entity Volumes
+# Initialize Entity Volumes with Persistence Check
 if 'entity_data' not in st.session_state:
-    st.session_state.entity_data = {}
+    saved_data = load_persistent_data()
+    if saved_data:
+        st.session_state.entity_data = saved_data
+    else:
+        st.session_state.entity_data = {}
 
 for ent in st.session_state.entities:
     if ent not in st.session_state.entity_data:
@@ -209,6 +227,7 @@ with col_clear:
             'users': 0, 'priv_users': 0, 'accounts': 0, 'apps': 0, 
             'servers_win': 0, 'servers_linux': 0, 'servers_other': 0
         }
+        save_persistent_data(st.session_state.entity_data) # SAVE PERSISTENTLY
         update_all_results() 
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
@@ -245,6 +264,7 @@ with left_col:
                         'servers_win': int(float(lines[4])), 'servers_linux': int(float(lines[5])),
                         'servers_other': int(float(lines[6]))
                     })
+                    save_persistent_data(st.session_state.entity_data) # SAVE PERSISTENTLY
                     st.rerun()
             except ValueError:
                 st.error("Format error. Ensure numbers only.")
@@ -270,8 +290,8 @@ with left_col:
             'users': u_users, 'priv_users': u_priv, 'accounts': u_acc, 
             'apps': u_app, 'servers_win': u_win, 'servers_linux': u_lin, 'servers_other': u_oth
         }
+        save_persistent_data(st.session_state.entity_data) # SAVE PERSISTENTLY
         update_all_results() 
-        # Only show notification if it hasn't been shown before in this session
         if not st.session_state.has_notified:
             st.session_state.show_notif = True
             st.session_state.has_notified = True
@@ -306,7 +326,7 @@ with right_col:
     </div>
     <div class="grey-subheader">Cost by Identity</div>
     <div class="center-content">
-        <div class="item-label">Standard User + License</div>
+        <div style="margin-label">Standard User + License</div>
         <div class="item-value">${tot_std_lic:,.2f}</div>
         <div class="item-label">Privileged User + License</div>
         <div class="item-value">${tot_priv_lic:,.2f}</div>
