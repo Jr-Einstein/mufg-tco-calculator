@@ -1,0 +1,166 @@
+{
+    "ca62860a": {
+        "author": "Aman",
+        "entities": [
+            "MUBK",
+            "MUSA",
+            "BRAZIL",
+            "MEXICO",
+            "INTREPID",
+            "BRAZIL (SOW1)"
+        ],
+        "entity_data": {
+            "MUBK": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "MUSA": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "BRAZIL": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "MEXICO": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "INTREPID": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "BRAZIL (SOW1)": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            }
+        },
+        "license_costs": {
+            "acat": 0.0,
+            "stealthbit": 22.5,
+            "iga": 43.5,
+            "cyberark": 510.0,
+            "centrify": 54.0,
+            "servicenow": 192.0
+        },
+        "iam_op_costs": {
+            "per_gsi": 0.01,
+            "per_linux": 0.0023,
+            "per_windows": 0.0023,
+            "ad_support": 0.00132696,
+            "cert_audit_pct": 12.0
+        }
+    },
+    "8e997fc0": {
+        "author": "Aman",
+        "entities": [
+            "MUBK",
+            "MUSA",
+            "BRAZIL",
+            "MEXICO",
+            "INTREPID",
+            "BRAZIL (SOW1)"
+        ],
+        "entity_data": {
+            "MUBK": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "MUSA": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "BRAZIL": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "MEXICO": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "INTREPID": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            },
+            "BRAZIL (SOW1)": {
+                "users": 0,
+                "priv_users": 0,
+                "accounts": 0,
+                "apps": 0,
+                "servers_win": 0,
+                "servers_linux": 0,
+                "servers_other": 0
+            }
+        },
+        "license_costs": {
+            "acat": 0.0,
+            "stealthbit": 22.5,
+            "iga": 43.5,
+            "cyberark": 510.0,
+            "centrify": 54.0,
+            "servicenow": 192.0
+        },
+        "iam_op_costs": {
+            "per_gsi": 0.01,
+            "per_linux": 0.0023,
+            "per_windows": 0.0023,
+            "ad_support": 0.00132696,
+            "cert_audit_pct": 12.0
+        }
+    }
+}
